@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Javascript ile fotoğraf şifreleme uygulaması</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+        var socket = io();
+        var myID;
+        var encodedImage;
+        socket.on('myID', function(id) {
+            myID = id;
+        });
+        
+        socket.on('userList', function(data) {
+            var userList = document.getElementById('users');
+            userList.innerHTML = '';
+            for (var i = 0; i < data.length; i++) {
+                var user = document.createElement('li');
+                user.innerHTML = data[i] == myID ? '<b>ME</b>': ''+data[i]+'<button onClick="postImage(\''+myID+'\',\''+data[i]+'\')">Send Encoded Image</button>';
+                userList.appendChild(user);
+            }
+        });
+        socket.on('encodedImage', function(data){
+            if(data.user==myID){
+                encodedImage = data.image;
+                document.querySelector('.responseImg').innerHTML = '<img id="#encodedImage" src="http://localhost:3000/uploads/'+data.image+'" />';
+            }
+        })
+        async function postImage(userID, forWho){
+            const fileInput = document.querySelector('#fileInput') ;
+            const messageInput = document.querySelector('#message');
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('message', messageInput.value);
+            formData.append('id', userID);
+            formData.append('forWho', forWho);
+            const options = {
+                method: 'POST',
+                body: formData
+            };
+            
+            fetch('/encode', options);
+        }
+        async function decodeImage(){
+            console.log(encodedImage)
+            const options = {
+                method: 'GET',
+            };
+            fetch('/decode/'+encodedImage+'', options).then( async (res)=>{
+                var text = await res.text();
+                alert(JSON.parse(text).message);
+                document.querySelector('.responseImg').innerHTML = '<h1>'+JSON.parse(text).msg+'</h1>';
+             })
+        }
+    </script>
+</head>
+<body>
+    <input type="file" id="fileInput" name="fileInput" />
+    <input type="text" name="message" id="message" />
+    <button onclick="decodeImage()">Decode Image</button>
+    <ul id="users"  style="list-style: none;">
+    </ul>
+    <div class="responseImg">
+
+    </div>
+</body>
+</html>
